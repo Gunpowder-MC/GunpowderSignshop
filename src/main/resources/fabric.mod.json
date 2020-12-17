@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "gunpowder-signshop",
+  "version": "${version}",
+  "name": "Gunpowder Signshop",
+  "description": "Gunpowder Signshop Module",
+  "license": "MIT",
+  "icon": "assets/gunpowder/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "gunpowder:modules": [
+      "io.github.gunpowder.GunpowderSignshopModule"
+    ]
+  },
+  "mixins": [
+    "mixins.signshop.gunpowder.json"
+  ],
+  "accessWidener": "gunpowder_signshop.accesswidener",
+  "depends": {
+    "gunpowder-base": ">=${gunpowder}",
+    "gunpowder-currency": "*",
+    "fabricloader": ">=0.8.9",
+    "fabric": ">=0.19.0"
+  }
+}
