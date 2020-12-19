@@ -56,6 +56,8 @@ object AdminSellSign {
         SignType.builder {
             name("gp:adminsell")
 
+            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.hasPermissionLevel(4) }
+
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val data = dataCache[signBlockEntity] ?: return@onClicked
 
@@ -77,10 +79,6 @@ object AdminSellSign {
             }
 
             onCreated { signBlockEntity, serverPlayerEntity ->
-                if (!serverPlayerEntity.hasPermissionLevel(4)) {
-                    throw Exception("Permission too low!")
-                }
-
                 val lastEntity = GunpowderSignshopModule.lastClickCache[serverPlayerEntity.uuid]
                 if (lastEntity != null) {
                     val stack = lastEntity.getStack(0)
@@ -106,10 +104,6 @@ object AdminSellSign {
             }
 
             onDestroyed { signBlockEntity, serverPlayerEntity ->
-                if (!serverPlayerEntity.hasPermissionLevel(4)) {
-                    throw Exception("Permission too low!")
-                }
-
                 if (dataCache.containsKey(signBlockEntity)) {
                     dataCache.remove(signBlockEntity)
                 }
