@@ -27,7 +27,9 @@ package io.github.gunpowder.signtypes
 import io.github.gunpowder.GunpowderSignshopModule
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
+import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.module.currency.modelhandlers.BalanceHandler
+import io.github.gunpowder.entities.ConfirmPopup
 import net.minecraft.block.entity.LockableContainerBlockEntity
 import net.minecraft.block.entity.LootableContainerBlockEntity
 import net.minecraft.block.entity.SignBlockEntity
@@ -37,6 +39,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtHelper
 import net.minecraft.nbt.NbtOps
 import net.minecraft.text.LiteralText
+import net.minecraft.util.Formatting
 import net.minecraft.util.Identifier
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.collection.DefaultedList
@@ -60,38 +63,46 @@ object BuySign {
                 val data = dataCache[signBlockEntity] ?: return@onClicked
                 val container by data.linkedContainer;
 
-                if (container.world?.getBlockEntity(container.pos) != container) {
-                    // Container was broken
-                    serverPlayerEntity.sendMessage(LiteralText("Shop no longer exists!"), false)
-                    return@onClicked
-                }
-
-                if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {
-                    serverPlayerEntity.sendMessage(LiteralText("Not enough money!"), false)
-                } else {
-                    val amountExtractable = Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
-
-                    if (amountExtractable < data.targetStack.count) {
-                        serverPlayerEntity.sendMessage(LiteralText("Shop not stocked"), false)
-                    } else {
-                        // Do transaction
-                        handler.modifyUser(serverPlayerEntity.uuid) {
-                            it.balance -= data.price.toBigDecimal()
-                            it
-                        }
-
-                        handler.modifyUser(data.ownerUUID) {
-                            it.balance += data.price.toBigDecimal()
-                            it
-                        }
-
-                        Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
-                        if (!serverPlayerEntity.inventory.insertStack(data.targetStack.copy())) {
-                            ItemScatterer.spawn(serverPlayerEntity.world, serverPlayerEntity.blockPos, DefaultedList.copyOf(data.targetStack.copy()))
-                        }
-                        serverPlayerEntity.sendMessage(LiteralText("Purchased ${data.targetStack} for $${data.price}"), false)
+                ConfirmPopup(Text.builder {
+                    text("Buying ${data.targetStack} for $${data.price}. ")
+                    text("[Confirm]") {
+                        color(Formatting.GREEN)
+                        onClickCommand("gpss_confirm")
                     }
-                }
+                }, serverPlayerEntity) {
+                    if (container.world?.getBlockEntity(container.pos) != container) {
+                        // Container was broken
+                        serverPlayerEntity.sendMessage(LiteralText("Shop no longer exists!"), false)
+                        return@ConfirmPopup
+                    }
+
+                    if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {
+                        serverPlayerEntity.sendMessage(LiteralText("Not enough money!"), false)
+                    } else {
+                        val amountExtractable = Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
+
+                        if (amountExtractable < data.targetStack.count) {
+                            serverPlayerEntity.sendMessage(LiteralText("Shop not stocked"), false)
+                        } else {
+                            // Do transaction
+                            handler.modifyUser(serverPlayerEntity.uuid) {
+                                it.balance -= data.price.toBigDecimal()
+                                it
+                            }
+
+                            handler.modifyUser(data.ownerUUID) {
+                                it.balance += data.price.toBigDecimal()
+                                it
+                            }
+
+                            Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
+                            if (!serverPlayerEntity.inventory.insertStack(data.targetStack.copy())) {
+                                ItemScatterer.spawn(serverPlayerEntity.world, serverPlayerEntity.blockPos, DefaultedList.copyOf(data.targetStack.copy()))
+                            }
+                            serverPlayerEntity.sendMessage(LiteralText("Purchased ${data.targetStack} for $${data.price}"), false)
+                        }
+                    }
+                }.show()
             }
 
             onCreated { signBlockEntity, serverPlayerEntity ->

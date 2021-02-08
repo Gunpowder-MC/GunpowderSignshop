@@ -26,6 +26,7 @@ package io.github.gunpowder
 
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.GunpowderModule
+import io.github.gunpowder.commands.ConfirmCommand
 import io.github.gunpowder.signtypes.AdminBuySign
 import io.github.gunpowder.signtypes.AdminSellSign
 import io.github.gunpowder.signtypes.BuySign
@@ -61,6 +62,10 @@ class GunpowderSignshopModule : GunpowderModule {
             }
             TypedActionResult.pass(stack)
         })
+    }
+
+    override fun registerCommands() {
+        gunpowder.registry.registerCommand(ConfirmCommand::register)
     }
 
     override fun onInitialize() {

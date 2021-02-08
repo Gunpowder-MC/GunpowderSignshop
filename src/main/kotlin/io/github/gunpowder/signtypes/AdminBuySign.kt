@@ -27,7 +27,9 @@ package io.github.gunpowder.signtypes
 import io.github.gunpowder.GunpowderSignshopModule
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
+import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.module.currency.modelhandlers.BalanceHandler
+import io.github.gunpowder.entities.ConfirmPopup
 import net.minecraft.block.entity.LockableContainerBlockEntity
 import net.minecraft.block.entity.LootableContainerBlockEntity
 import net.minecraft.block.entity.SignBlockEntity
@@ -37,6 +39,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtHelper
 import net.minecraft.nbt.NbtOps
 import net.minecraft.text.LiteralText
+import net.minecraft.util.Formatting
 import net.minecraft.util.Identifier
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.collection.DefaultedList
@@ -61,20 +64,28 @@ object AdminBuySign {
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val data = dataCache[signBlockEntity] ?: return@onClicked
 
-                if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {
-                    serverPlayerEntity.sendMessage(LiteralText("Not enough money!"), false)
-                } else {
-                    // Do transaction
-                    handler.modifyUser(serverPlayerEntity.uuid) {
-                        it.balance -= data.price.toBigDecimal()
-                        it
+                ConfirmPopup(Text.builder {
+                    text("Buying ${data.targetStack} for $${data.price}. ")
+                    text("[Confirm]") {
+                        color(Formatting.GREEN)
+                        onClickCommand("gpss_confirm")
                     }
+                }, serverPlayerEntity) {
+                    if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {
+                        serverPlayerEntity.sendMessage(LiteralText("Not enough money!"), false)
+                    } else {
+                        // Do transaction
+                        handler.modifyUser(serverPlayerEntity.uuid) {
+                            it.balance -= data.price.toBigDecimal()
+                            it
+                        }
 
-                    if (!serverPlayerEntity.inventory.insertStack(data.targetStack.copy())) {
-                        ItemScatterer.spawn(serverPlayerEntity.world, serverPlayerEntity.blockPos, DefaultedList.copyOf(data.targetStack.copy()))
+                        if (!serverPlayerEntity.inventory.insertStack(data.targetStack.copy())) {
+                            ItemScatterer.spawn(serverPlayerEntity.world, serverPlayerEntity.blockPos, DefaultedList.copyOf(data.targetStack.copy()))
+                        }
+                        serverPlayerEntity.sendMessage(LiteralText("Purchased ${data.targetStack} for $${data.price}"), false)
                     }
-                    serverPlayerEntity.sendMessage(LiteralText("Purchased ${data.targetStack} for $${data.price}"), false)
-                }
+                }.show()
             }
 
             onCreated { signBlockEntity, serverPlayerEntity ->

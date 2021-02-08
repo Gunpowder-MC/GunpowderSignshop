@@ -27,7 +27,9 @@ package io.github.gunpowder.signtypes
 import io.github.gunpowder.GunpowderSignshopModule
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
+import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.module.currency.modelhandlers.BalanceHandler
+import io.github.gunpowder.entities.ConfirmPopup
 import net.minecraft.block.entity.LockableContainerBlockEntity
 import net.minecraft.block.entity.LootableContainerBlockEntity
 import net.minecraft.block.entity.SignBlockEntity
@@ -37,6 +39,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtHelper
 import net.minecraft.nbt.NbtOps
 import net.minecraft.text.LiteralText
+import net.minecraft.util.Formatting
 import net.minecraft.util.Identifier
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.collection.DefaultedList
@@ -61,21 +64,29 @@ object AdminSellSign {
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val data = dataCache[signBlockEntity] ?: return@onClicked
 
-                val amountExtractable = Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
-
-                if (amountExtractable < data.targetStack.count) {
-                    serverPlayerEntity.sendMessage(LiteralText("Not enough items!"), false)
-                } else {
-                    // Do transaction
-                    handler.modifyUser(serverPlayerEntity.uuid) {
-                        it.balance += data.price.toBigDecimal()
-                        it
+                ConfirmPopup(Text.builder {
+                    text("Selling ${data.targetStack} for $${data.price}. ")
+                    text("[Confirm]") {
+                        color(Formatting.GREEN)
+                        onClickCommand("gpss_confirm")
                     }
+                }, serverPlayerEntity) {
+                    val amountExtractable = Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
 
-                    Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
+                    if (amountExtractable < data.targetStack.count) {
+                        serverPlayerEntity.sendMessage(LiteralText("Not enough items!"), false)
+                    } else {
+                        // Do transaction
+                        handler.modifyUser(serverPlayerEntity.uuid) {
+                            it.balance += data.price.toBigDecimal()
+                            it
+                        }
 
-                    serverPlayerEntity.sendMessage(LiteralText("Sold ${data.targetStack} for $${data.price}"), false)
-                }
+                        Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
+
+                        serverPlayerEntity.sendMessage(LiteralText("Sold ${data.targetStack} for $${data.price}"), false)
+                    }
+                }.show()
             }
 
             onCreated { signBlockEntity, serverPlayerEntity ->
