@@ -30,9 +30,11 @@ import io.github.gunpowder.commands.ConfirmCommand
 import io.github.gunpowder.signtypes.AdminBuySign
 import io.github.gunpowder.signtypes.AdminSellSign
 import io.github.gunpowder.signtypes.BuySign
+import io.github.gunpowder.signtypes.SellSign
 import net.fabricmc.fabric.api.event.player.UseItemCallback
 import net.minecraft.block.AbstractSignBlock
 import net.minecraft.block.ChestBlock
+import net.minecraft.block.entity.ChestBlockEntity
 import net.minecraft.block.entity.LootableContainerBlockEntity
 import net.minecraft.item.Items
 import net.minecraft.nbt.CompoundTag
@@ -55,7 +57,7 @@ class GunpowderSignshopModule : GunpowderModule {
                 val p = BlockPos(hit.pos)
                 val state = world.getBlockState(p)
                 if (state.block is ChestBlock) {
-                    lastClickCache[playerEntity.uuid] = world.getBlockEntity(p) as LootableContainerBlockEntity
+                    lastClickCache[playerEntity.uuid] = world.getBlockEntity(p) as ChestBlockEntity
                     playerEntity.sendMessage(LiteralText("Marked container at [${p.x}, ${p.y}, ${p.z}]"), false)
                     TypedActionResult.success(stack)
                 }
@@ -70,11 +72,12 @@ class GunpowderSignshopModule : GunpowderModule {
 
     override fun onInitialize() {
         BuySign.build()
+        SellSign.build()
         AdminBuySign.build()
         AdminSellSign.build()
     }
 
     companion object {
-        val lastClickCache = mutableMapOf<UUID, LootableContainerBlockEntity>()
+        val lastClickCache = WeakHashMap<UUID, ChestBlockEntity>()
     }
 }

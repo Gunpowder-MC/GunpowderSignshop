@@ -30,11 +30,10 @@ import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.module.currency.modelhandlers.BalanceHandler
 import io.github.gunpowder.entities.ConfirmPopup
-import net.minecraft.block.entity.ChestBlockEntity
-import net.minecraft.block.entity.LockableContainerBlockEntity
-import net.minecraft.block.entity.LootableContainerBlockEntity
-import net.minecraft.block.entity.SignBlockEntity
+import net.minecraft.block.entity.*
 import net.minecraft.inventory.Inventories
+import net.minecraft.inventory.Inventory
+import net.minecraft.inventory.SimpleInventory
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.NbtHelper
@@ -45,27 +44,28 @@ import net.minecraft.util.Identifier
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.collection.DefaultedList
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Direction
 import net.minecraft.util.registry.Registry
 import net.minecraft.util.registry.RegistryKey
 import java.util.*
 import java.util.function.Predicate
 
-object BuySign {
-    val dataCache = mutableMapOf<SignBlockEntity, SignBuyData>()
+object SellSign {
+    val dataCache = mutableMapOf<SignBlockEntity, SignSellData>()
     val handler by lazy {
         GunpowderMod.instance.registry.getModelHandler(BalanceHandler::class.java)
     }
 
     fun build() {
         SignType.builder {
-            name("gp:buy")
+            name("gp:sell")
 
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val data = dataCache[signBlockEntity] ?: return@onClicked
                 val container by data.linkedContainer;
 
                 ConfirmPopup(Text.builder {
-                    text("Buying ${data.targetStack} for $${data.price}. ")
+                    text("Selling ${data.targetStack} for $${data.price}. ")
                     text("[Confirm]") {
                         color(Formatting.GREEN)
                         onClickCommand("gpss_confirm")
@@ -77,30 +77,38 @@ object BuySign {
                         return@ConfirmPopup
                     }
 
-                    if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {
-                        serverPlayerEntity.sendMessage(LiteralText("Not enough money!"), false)
+                    if (handler.getUser(data.ownerUUID).balance.toDouble() < data.price) {
+                        serverPlayerEntity.sendMessage(LiteralText("Shop owner does not have enough money!"), false)
                     } else {
-                        val amountExtractable = Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
+                        val amountExtractable = Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
+                        val inv = SimpleInventory(1)
+                        inv.setStack(0, data.targetStack.copy())
+                        val res = HopperBlockEntity.transfer(inv, container, data.targetStack.copy(), Direction.UP)
+                        if (res.count != 0) {
+                            // Not enough room
+                            serverPlayerEntity.sendMessage(LiteralText("Not enough space left in shop!"), false)
+                            Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count - res.count, false)
+                        }
 
                         if (amountExtractable < data.targetStack.count) {
-                            serverPlayerEntity.sendMessage(LiteralText("Shop not stocked"), false)
+                            serverPlayerEntity.sendMessage(LiteralText("Not enough items!"), false)
+                            // Undo transferring items
+                            Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
                         } else {
                             // Do transaction
                             handler.modifyUser(serverPlayerEntity.uuid) {
-                                it.balance -= data.price.toBigDecimal()
-                                it
-                            }
-
-                            handler.modifyUser(data.ownerUUID) {
                                 it.balance += data.price.toBigDecimal()
                                 it
                             }
 
-                            Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
-                            if (!serverPlayerEntity.inventory.insertStack(data.targetStack.copy())) {
-                                ItemScatterer.spawn(serverPlayerEntity.world, serverPlayerEntity.blockPos, DefaultedList.copyOf(data.targetStack.copy()))
+                            handler.modifyUser(data.ownerUUID) {
+                                it.balance -= data.price.toBigDecimal()
+                                it
                             }
-                            serverPlayerEntity.sendMessage(LiteralText("Purchased ${data.targetStack} for $${data.price}"), false)
+
+                            // Target container already has the items, no need to insert
+                            Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
+                            serverPlayerEntity.sendMessage(LiteralText("Sold ${data.targetStack} for $${data.price}"), false)
                         }
                     }
                 }.show()
@@ -120,7 +128,7 @@ object BuySign {
                             signBlockEntity.world?.removeBlock(signBlockEntity.pos, false)
                         } else {
                             serverPlayerEntity.sendMessage(LiteralText("Put up for sale: $stack for $${price.first()!!}"), false)
-                            val data = SignBuyData(lazy { lastEntity }, serverPlayerEntity.uuid, stack.copy(), price.first()!!)
+                            val data = SignSellData(lazy { lastEntity }, serverPlayerEntity.uuid, stack.copy(), price.first()!!)
                             GunpowderSignshopModule.lastClickCache.remove(serverPlayerEntity.uuid)
                             dataCache[signBlockEntity] = data
                         }
@@ -155,18 +163,18 @@ object BuySign {
 
             deserialize { signBlockEntity, compoundTag ->
                 val link = compoundTag.getCompound("link")
-                val data = SignBuyData(
-                        lazy { GunpowderMod.instance.server.getWorld(RegistryKey.of(Registry.DIMENSION, Identifier(link.getString("world"))))?.getBlockEntity(BlockPos(link.getInt("x"), link.getInt("y"), link.getInt("z"))) as ChestBlockEntity },
-                        link.getUuid("owner"),
-                        ItemStack.fromTag(link.getCompound("item")),
-                        link.getDouble("price")
+                val data = SignSellData(
+                    lazy { GunpowderMod.instance.server.getWorld(RegistryKey.of(Registry.DIMENSION, Identifier(link.getString("world"))))?.getBlockEntity(BlockPos(link.getInt("x"), link.getInt("y"), link.getInt("z"))) as ChestBlockEntity },
+                    link.getUuid("owner"),
+                    ItemStack.fromTag(link.getCompound("item")),
+                    link.getDouble("price")
                 )
                 dataCache[signBlockEntity] = data
             }
         }
     }
 
-    data class SignBuyData(
+    data class SignSellData(
         val linkedContainer: Lazy<ChestBlockEntity>,
         val ownerUUID: UUID,
         val targetStack: ItemStack,
