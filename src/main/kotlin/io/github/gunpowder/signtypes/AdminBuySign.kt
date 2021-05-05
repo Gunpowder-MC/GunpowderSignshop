@@ -68,7 +68,7 @@ object AdminBuySign {
                     text("Buying ${data.targetStack} for $${data.price}. ")
                     text("[Confirm]") {
                         color(Formatting.GREEN)
-                        onClickCommand("gpss_confirm")
+                        onClickCommand("/gpss_confirm")
                     }
                 }, serverPlayerEntity) {
                     if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {

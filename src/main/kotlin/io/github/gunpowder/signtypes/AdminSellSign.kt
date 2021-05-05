@@ -68,7 +68,7 @@ object AdminSellSign {
                     text("Selling ${data.targetStack} for $${data.price}. ")
                     text("[Confirm]") {
                         color(Formatting.GREEN)
-                        onClickCommand("gpss_confirm")
+                        onClickCommand("/gpss_confirm")
                     }
                 }, serverPlayerEntity) {
                     val amountExtractable = Inventories.remove(serverPlayerEntity.inventory, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
