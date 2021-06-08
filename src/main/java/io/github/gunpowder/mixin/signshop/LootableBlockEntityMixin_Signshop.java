@@ -25,24 +25,31 @@
 package io.github.gunpowder.mixin.signshop;
 
 import io.github.gunpowder.signtypes.BuySign;
+import io.github.gunpowder.signtypes.SellSign;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.block.entity.LootableContainerBlockEntity;
+import net.minecraft.util.math.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;
 
 @Mixin(LootableContainerBlockEntity.class)
 public class LootableBlockEntityMixin_Signshop extends BlockEntity {
-    public LootableBlockEntityMixin_Signshop(BlockEntityType<?> type) {
-        super(type);
+    public LootableBlockEntityMixin_Signshop(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state);
     }
 
     @Override
     public void markRemoved() {
-        BuySign.INSTANCE.getDataCache().entrySet().forEach((e) -> {  // Keyset to avoid concurrentmodification
-            if (e.getValue().getLinkedContainer() == (Object)this) {
-                BuySign.INSTANCE.getDataCache().remove(e.getKey());
+        BuySign.INSTANCE.getDataCache().forEach((key, value) -> {  // Keyset to avoid concurrentmodification
+            if (value.getLinkedContainer() == (Object) this) {
+                BuySign.INSTANCE.getDataCache().remove(key);
             }
         });
-        // TODO: Other signs
+        SellSign.INSTANCE.getDataCache().forEach((key, value) -> {  // Keyset to avoid concurrentmodification
+            if (value.getLinkedContainer() == (Object) this) {
+                BuySign.INSTANCE.getDataCache().remove(key);
+            }
+        });
     }
 }

@@ -26,22 +26,22 @@ package io.github.gunpowder
 
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.GunpowderModule
+import io.github.gunpowder.api.components.bind
+import io.github.gunpowder.api.components.with
 import io.github.gunpowder.commands.ConfirmCommand
+import io.github.gunpowder.entities.SignPlayerComponent
 import io.github.gunpowder.signtypes.AdminBuySign
 import io.github.gunpowder.signtypes.AdminSellSign
 import io.github.gunpowder.signtypes.BuySign
 import io.github.gunpowder.signtypes.SellSign
 import net.fabricmc.fabric.api.event.player.UseItemCallback
-import net.minecraft.block.AbstractSignBlock
 import net.minecraft.block.ChestBlock
 import net.minecraft.block.entity.ChestBlockEntity
-import net.minecraft.block.entity.LootableContainerBlockEntity
 import net.minecraft.item.Items
-import net.minecraft.nbt.CompoundTag
+import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.LiteralText
 import net.minecraft.util.TypedActionResult
 import net.minecraft.util.math.BlockPos
-import java.util.*
 
 class GunpowderSignshopModule : GunpowderModule {
     override val name = "signshop"
@@ -50,20 +50,24 @@ class GunpowderSignshopModule : GunpowderModule {
         get() = GunpowderMod.instance
 
     override fun registerEvents() {
-        UseItemCallback.EVENT.register(UseItemCallback { playerEntity, world, hand ->
+        UseItemCallback.EVENT.register { playerEntity, world, hand ->
             val stack = playerEntity.getStackInHand(hand)
             if (stack.item == Items.GOLD_NUGGET) {
-                val hit = playerEntity.raycast(5.0, 0.0f, false) ?: return@UseItemCallback TypedActionResult.pass(stack)
+                val hit = playerEntity.raycast(5.0, 0.0f, false) ?: return@register TypedActionResult.pass(stack)
                 val p = BlockPos(hit.pos)
                 val state = world.getBlockState(p)
                 if (state.block is ChestBlock) {
-                    lastClickCache[playerEntity.uuid] = world.getBlockEntity(p) as ChestBlockEntity
+                    playerEntity.with<SignPlayerComponent>().selected = world.getBlockEntity(p) as ChestBlockEntity
                     playerEntity.sendMessage(LiteralText("Marked container at [${p.x}, ${p.y}, ${p.z}]"), false)
                     TypedActionResult.success(stack)
                 }
             }
             TypedActionResult.pass(stack)
-        })
+        }
+    }
+
+    override fun registerComponents() {
+        ServerPlayerEntity::class.bind<SignPlayerComponent>()
     }
 
     override fun registerCommands() {
@@ -75,9 +79,5 @@ class GunpowderSignshopModule : GunpowderModule {
         SellSign.build()
         AdminBuySign.build()
         AdminSellSign.build()
-    }
-
-    companion object {
-        val lastClickCache = WeakHashMap<UUID, ChestBlockEntity>()
     }
 }

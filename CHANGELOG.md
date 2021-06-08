@@ -1,4 +1,10 @@
-# Gunpowder Signshop 1.0.1
+# Gunpowder Signshop 1.0.3
+
+- Updated to 1.17
+
+---
+
+# Gunpowder Signshop 1.0.2
 
 - Fixed faulty confirm button
 

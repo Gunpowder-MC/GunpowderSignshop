@@ -1,2 +1,2 @@
 accessWidener v1 named
-accessible field net/minecraft/block/entity/SignBlockEntity text [Lnet/minecraft/text/Text;
+accessible field net/minecraft/block/entity/SignBlockEntity texts [Lnet/minecraft/text/Text;

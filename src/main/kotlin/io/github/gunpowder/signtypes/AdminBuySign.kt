@@ -25,34 +25,24 @@
 package io.github.gunpowder.signtypes
 
 import io.github.gunpowder.GunpowderSignshopModule
-import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
-import io.github.gunpowder.api.module.currency.modelhandlers.BalanceHandler
+import io.github.gunpowder.api.components.with
 import io.github.gunpowder.entities.ConfirmPopup
-import net.minecraft.block.entity.LockableContainerBlockEntity
-import net.minecraft.block.entity.LootableContainerBlockEntity
+import io.github.gunpowder.entities.SignPlayerComponent
+import io.github.gunpowder.modelhandlers.BalanceHandler
 import net.minecraft.block.entity.SignBlockEntity
-import net.minecraft.inventory.Inventories
 import net.minecraft.item.ItemStack
-import net.minecraft.nbt.CompoundTag
-import net.minecraft.nbt.NbtHelper
-import net.minecraft.nbt.NbtOps
+import net.minecraft.nbt.NbtCompound
 import net.minecraft.text.LiteralText
 import net.minecraft.util.Formatting
-import net.minecraft.util.Identifier
 import net.minecraft.util.ItemScatterer
 import net.minecraft.util.collection.DefaultedList
-import net.minecraft.util.math.BlockPos
-import net.minecraft.util.registry.Registry
-import net.minecraft.util.registry.RegistryKey
-import java.util.*
-import java.util.function.Predicate
 
 object AdminBuySign {
     val dataCache = mutableMapOf<SignBlockEntity, SignBuyData>()
     val handler by lazy {
-        GunpowderMod.instance.registry.getModelHandler(BalanceHandler::class.java)
+        BalanceHandler
     }
 
     fun build() {
@@ -89,21 +79,22 @@ object AdminBuySign {
             }
 
             onCreated { signBlockEntity, serverPlayerEntity ->
-                val lastEntity = GunpowderSignshopModule.lastClickCache[serverPlayerEntity.uuid]
+                val comp = serverPlayerEntity.with<SignPlayerComponent>()
+                val lastEntity = comp.selected
                 if (lastEntity != null) {
                     val stack = lastEntity.getStack(0)
                     if (stack.isEmpty) {
                         serverPlayerEntity.sendMessage(LiteralText("No item in the first slot!"), false)
                         signBlockEntity.world?.removeBlock(signBlockEntity.pos, false)
                     } else {
-                        val price = signBlockEntity.text.filter { it.asString().contains("$") }.map { it.asString().replace("$", "").toDoubleOrNull() }
+                        val price = signBlockEntity.texts.filter { it.asString().contains("$") }.map { it.asString().replace("$", "").toDoubleOrNull() }
                         if (price.isEmpty() || price.first() == null || price.first()!! <= 0) {
                             serverPlayerEntity.sendMessage(LiteralText("No price configured on the sign. Make sure to enter '$' on the line with the price."), false)
                             signBlockEntity.world?.removeBlock(signBlockEntity.pos, false)
                         } else {
                             serverPlayerEntity.sendMessage(LiteralText("Put up for sale: $stack for $${price.first()!!}"), false)
                             val data = SignBuyData(stack.copy(), price.first()!!)
-                            GunpowderSignshopModule.lastClickCache.remove(serverPlayerEntity.uuid)
+                            comp.selected = null
                             dataCache[signBlockEntity] = data
                         }
                     }
@@ -121,9 +112,9 @@ object AdminBuySign {
 
             serialize { signBlockEntity, compoundTag ->
                 val data = dataCache[signBlockEntity]  ?: return@serialize
-                val link = CompoundTag()
-                val item = CompoundTag()
-                data.targetStack.toTag(item)
+                val link = NbtCompound()
+                val item = NbtCompound()
+                data.targetStack.writeNbt(item)
                 link.put("item", item)
                 link.putDouble("price", data.price)
                 compoundTag.put("link", link)
@@ -132,7 +123,7 @@ object AdminBuySign {
             deserialize { signBlockEntity, compoundTag ->
                 val link = compoundTag.getCompound("link")
                 val data = SignBuyData(
-                    ItemStack.fromTag(link.getCompound("item")),
+                    ItemStack.fromNbt(link.getCompound("item")),
                     link.getDouble("price")
                 )
                 dataCache[signBlockEntity] = data
