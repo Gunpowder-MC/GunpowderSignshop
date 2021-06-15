@@ -26,7 +26,10 @@ package io.github.gunpowder
 
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.GunpowderModule
+import io.github.gunpowder.api.components.Component
 import io.github.gunpowder.api.components.bind
+//import io.github.gunpowder.api.components.bind
+import io.github.gunpowder.api.components.injected
 import io.github.gunpowder.api.components.with
 import io.github.gunpowder.commands.ConfirmCommand
 import io.github.gunpowder.entities.SignPlayerComponent
@@ -42,6 +45,7 @@ import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.LiteralText
 import net.minecraft.util.TypedActionResult
 import net.minecraft.util.math.BlockPos
+import kotlin.reflect.KClass
 
 class GunpowderSignshopModule : GunpowderModule {
     override val name = "signshop"
@@ -65,6 +69,7 @@ class GunpowderSignshopModule : GunpowderModule {
             TypedActionResult.pass(stack)
         }
     }
+
 
     override fun registerComponents() {
         ServerPlayerEntity::class.bind<SignPlayerComponent>()
