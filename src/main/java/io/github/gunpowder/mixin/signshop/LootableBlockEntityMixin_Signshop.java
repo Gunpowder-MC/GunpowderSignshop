@@ -41,6 +41,7 @@ public class LootableBlockEntityMixin_Signshop extends BlockEntity {
 
     @Override
     public void markRemoved() {
+        super.markRemoved();
         BuySign.INSTANCE.getDataCache().forEach((key, value) -> {  // Keyset to avoid concurrentmodification
             if (value.getLinkedContainer() == (Object) this) {
                 BuySign.INSTANCE.getDataCache().remove(key);

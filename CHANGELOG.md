@@ -1,3 +1,9 @@
+# Gunpowder Signshop 1.0.5
+
+- Fixed bug with containers not being removed properly
+
+---
+
 # Gunpowder Signshop 1.0.3
 
 - Updated to 1.17
