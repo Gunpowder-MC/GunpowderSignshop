@@ -32,6 +32,7 @@ import io.github.gunpowder.api.components.bind
 import io.github.gunpowder.api.components.injected
 import io.github.gunpowder.api.components.with
 import io.github.gunpowder.commands.ConfirmCommand
+import io.github.gunpowder.entities.SignDataComponent
 import io.github.gunpowder.entities.SignPlayerComponent
 import io.github.gunpowder.signtypes.AdminBuySign
 import io.github.gunpowder.signtypes.AdminSellSign
@@ -40,6 +41,7 @@ import io.github.gunpowder.signtypes.SellSign
 import net.fabricmc.fabric.api.event.player.UseItemCallback
 import net.minecraft.block.ChestBlock
 import net.minecraft.block.entity.ChestBlockEntity
+import net.minecraft.block.entity.SignBlockEntity
 import net.minecraft.item.Items
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.LiteralText
@@ -55,6 +57,10 @@ class GunpowderSignshopModule : GunpowderModule {
 
     override fun registerEvents() {
         UseItemCallback.EVENT.register { playerEntity, world, hand ->
+            if (world.isClient()) {
+                return@register TypedActionResult.pass(playerEntity.getStackInHand(hand))
+            }
+
             val stack = playerEntity.getStackInHand(hand)
             if (stack.item == Items.GOLD_NUGGET) {
                 val hit = playerEntity.raycast(5.0, 0.0f, false) ?: return@register TypedActionResult.pass(stack)
@@ -73,6 +79,7 @@ class GunpowderSignshopModule : GunpowderModule {
 
     override fun registerComponents() {
         ServerPlayerEntity::class.bind<SignPlayerComponent>()
+        SignBlockEntity::class.bind<SignDataComponent<*>>()
     }
 
     override fun registerCommands() {

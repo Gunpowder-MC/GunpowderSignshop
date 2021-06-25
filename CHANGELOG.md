@@ -1,3 +1,10 @@
+# Gunpowder Signshop 1.0.6
+
+- Switch to components instead of maps
+- Properly drop items if the player inventory is full
+
+---
+
 # Gunpowder Signshop 1.0.5
 
 - Fixed bug with containers not being removed properly

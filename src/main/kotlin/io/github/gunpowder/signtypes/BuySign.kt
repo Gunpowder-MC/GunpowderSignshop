@@ -24,16 +24,17 @@
 
 package io.github.gunpowder.signtypes
 
-import io.github.gunpowder.GunpowderSignshopModule
 import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.components.with
 import io.github.gunpowder.entities.ConfirmPopup
+import io.github.gunpowder.entities.SignBuyData
+import io.github.gunpowder.entities.SignDataComponent
 import io.github.gunpowder.entities.SignPlayerComponent
 import io.github.gunpowder.modelhandlers.BalanceHandler
 import net.minecraft.block.entity.ChestBlockEntity
-import net.minecraft.block.entity.SignBlockEntity
+import net.minecraft.entity.ItemEntity
 import net.minecraft.inventory.Inventories
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
@@ -45,10 +46,8 @@ import net.minecraft.util.collection.DefaultedList
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.registry.Registry
 import net.minecraft.util.registry.RegistryKey
-import java.util.*
 
 object BuySign {
-    val dataCache = mutableMapOf<SignBlockEntity, SignBuyData>()
     val handler by lazy {
         BalanceHandler
     }
@@ -58,8 +57,14 @@ object BuySign {
             name("gp:buy")
 
             onClicked { signBlockEntity, serverPlayerEntity ->
-                val data = dataCache[signBlockEntity] ?: return@onClicked
+                val comp = signBlockEntity.with<SignDataComponent<SignBuyData>>()
+                val data = comp.data ?: return@onClicked
+
                 val container by data.linkedContainer;
+                if (container.isRemoved) {
+                    comp.data = null
+                    return@onClicked
+                }
 
                 ConfirmPopup(Text.builder {
                     text("Buying ${data.targetStack} for $${data.price}. ")
@@ -77,7 +82,7 @@ object BuySign {
                     if (handler.getUser(serverPlayerEntity.uuid).balance.toDouble() < data.price) {
                         serverPlayerEntity.sendMessage(LiteralText("Not enough money!"), false)
                     } else {
-                        val amountExtractable = Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, true)
+                        val amountExtractable = Inventories.remove(container, { ItemStack.canCombine(it, data.targetStack) }, data.targetStack.count, true)
 
                         if (amountExtractable < data.targetStack.count) {
                             serverPlayerEntity.sendMessage(LiteralText("Shop not stocked"), false)
@@ -93,9 +98,10 @@ object BuySign {
                                 it
                             }
 
-                            Inventories.remove(container, { it.isItemEqual(data.targetStack) }, data.targetStack.count, false)
-                            if (!serverPlayerEntity.inventory.insertStack(data.targetStack.copy())) {
-                                ItemScatterer.spawn(serverPlayerEntity.world, serverPlayerEntity.blockPos, DefaultedList.copyOf(data.targetStack.copy()))
+                            Inventories.remove(container, { ItemStack.canCombine(it, data.targetStack) }, data.targetStack.count, false)
+                            val stack = data.targetStack.copy()
+                            if (!serverPlayerEntity.inventory.insertStack(stack)) {
+                                serverPlayerEntity.world.spawnEntity(ItemEntity(serverPlayerEntity.world, serverPlayerEntity.x, serverPlayerEntity.y, serverPlayerEntity.z, stack))
                             }
                             serverPlayerEntity.sendMessage(LiteralText("Purchased ${data.targetStack} for $${data.price}"), false)
                         }
@@ -120,7 +126,7 @@ object BuySign {
                             serverPlayerEntity.sendMessage(LiteralText("Put up for sale: $stack for $${price.first()!!}"), false)
                             val data = SignBuyData(lazy { lastEntity }, serverPlayerEntity.uuid, stack.copy(), price.first()!!)
                             comp.selected = null
-                            dataCache[signBlockEntity] = data
+                            signBlockEntity.with<SignDataComponent<SignBuyData>>().data = data
                         }
                     }
                 } else {
@@ -130,13 +136,12 @@ object BuySign {
             }
 
             onDestroyed { signBlockEntity, serverPlayerEntity ->
-                if (dataCache.containsKey(signBlockEntity)) {
-                    dataCache.remove(signBlockEntity)
-                }
+                signBlockEntity.with<SignDataComponent<SignBuyData>>().data = null
             }
 
             serialize { signBlockEntity, compoundTag ->
-                val data = dataCache[signBlockEntity]  ?: return@serialize
+                val comp = signBlockEntity.with<SignDataComponent<SignBuyData>>()
+                val data = comp.data ?: return@serialize
                 val link = NbtCompound()
                 val item = NbtCompound()
                 val container by data.linkedContainer
@@ -153,21 +158,14 @@ object BuySign {
 
             deserialize { signBlockEntity, compoundTag ->
                 val link = compoundTag.getCompound("link")
-                val data = SignBuyData(
+                val comp = signBlockEntity.with<SignDataComponent<SignBuyData>>()
+                comp.data = SignBuyData(
                         lazy { GunpowderMod.instance.server.getWorld(RegistryKey.of(Registry.WORLD_KEY, Identifier(link.getString("world"))))?.getBlockEntity(BlockPos(link.getInt("x"), link.getInt("y"), link.getInt("z"))) as ChestBlockEntity },
                         link.getUuid("owner"),
                         ItemStack.fromNbt(link.getCompound("item")),
                         link.getDouble("price")
                 )
-                dataCache[signBlockEntity] = data
             }
         }
     }
-
-    data class SignBuyData(
-        val linkedContainer: Lazy<ChestBlockEntity>,
-        val ownerUUID: UUID,
-        val targetStack: ItemStack,
-        val price: Double
-    )
 }

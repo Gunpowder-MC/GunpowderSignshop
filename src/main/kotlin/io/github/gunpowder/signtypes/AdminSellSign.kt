@@ -24,23 +24,21 @@
 
 package io.github.gunpowder.signtypes
 
-import io.github.gunpowder.GunpowderSignshopModule
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.components.with
 import io.github.gunpowder.entities.ConfirmPopup
+import io.github.gunpowder.entities.SignAdminSellData
+import io.github.gunpowder.entities.SignDataComponent
 import io.github.gunpowder.entities.SignPlayerComponent
 import io.github.gunpowder.modelhandlers.BalanceHandler
-import net.minecraft.block.entity.SignBlockEntity
 import net.minecraft.inventory.Inventories
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.text.LiteralText
 import net.minecraft.util.Formatting
-import java.util.*
 
 object AdminSellSign {
-    val dataCache = mutableMapOf<SignBlockEntity, SignBuyData>()
     val handler by lazy {
         BalanceHandler
     }
@@ -52,7 +50,8 @@ object AdminSellSign {
             requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.hasPermissionLevel(4) }
 
             onClicked { signBlockEntity, serverPlayerEntity ->
-                val data = dataCache[signBlockEntity] ?: return@onClicked
+                val comp = signBlockEntity.with<SignDataComponent<SignAdminSellData>>()
+                val data = comp.data ?: return@onClicked
 
                 ConfirmPopup(Text.builder {
                     text("Selling ${data.targetStack} for $${data.price}. ")
@@ -94,9 +93,9 @@ object AdminSellSign {
                             signBlockEntity.world?.removeBlock(signBlockEntity.pos, false)
                         } else {
                             serverPlayerEntity.sendMessage(LiteralText("Put up for sale: $stack for $${price.first()!!}"), false)
-                            val data = SignBuyData(stack.copy(), price.first()!!)
+                            val data = SignAdminSellData(stack.copy(), price.first()!!)
                             comp.selected = null
-                            dataCache[signBlockEntity] = data
+                            signBlockEntity.with<SignDataComponent<SignAdminSellData>>().data = data
                         }
                     }
                 } else {
@@ -106,13 +105,12 @@ object AdminSellSign {
             }
 
             onDestroyed { signBlockEntity, serverPlayerEntity ->
-                if (dataCache.containsKey(signBlockEntity)) {
-                    dataCache.remove(signBlockEntity)
-                }
+                signBlockEntity.with<SignDataComponent<SignAdminSellData>>().data = null
             }
 
             serialize { signBlockEntity, compoundTag ->
-                val data = dataCache[signBlockEntity]  ?: return@serialize
+                val comp = signBlockEntity.with<SignDataComponent<SignAdminSellData>>()
+                val data = comp.data ?: return@serialize
                 val link = NbtCompound()
                 val item = NbtCompound()
                 data.targetStack.writeNbt(item)
@@ -123,17 +121,12 @@ object AdminSellSign {
 
             deserialize { signBlockEntity, compoundTag ->
                 val link = compoundTag.getCompound("link")
-                val data = SignBuyData(
+                val comp = signBlockEntity.with<SignDataComponent<SignAdminSellData>>()
+                comp.data = SignAdminSellData(
                     ItemStack.fromNbt(link.getCompound("item")),
                     link.getDouble("price")
                 )
-                dataCache[signBlockEntity] = data
             }
         }
     }
-
-    data class SignBuyData(
-        val targetStack: ItemStack,
-        val price: Double
-    )
 }

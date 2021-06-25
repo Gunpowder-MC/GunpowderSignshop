@@ -13,7 +13,6 @@
     ]
   },
   "mixins": [
-    "mixins.signshop.gunpowder.json"
   ],
   "accessWidener": "gunpowder_signshop.accesswidener",
   "depends": {

@@ -22,32 +22,40 @@
  * SOFTWARE.
  */
 
-package io.github.gunpowder.commands
+package io.github.gunpowder.entities
 
-import com.mojang.brigadier.CommandDispatcher
-import com.mojang.brigadier.context.CommandContext
-import io.github.gunpowder.api.builders.Command
-import io.github.gunpowder.api.components.with
-import io.github.gunpowder.entities.SignPlayerComponent
-import net.minecraft.server.command.ServerCommandSource
-import net.minecraft.server.network.ServerPlayerEntity
-import net.minecraft.text.LiteralText
+import io.github.gunpowder.api.components.Component
+import net.minecraft.block.entity.ChestBlockEntity
+import net.minecraft.block.entity.SignBlockEntity
+import net.minecraft.item.ItemStack
+import java.util.*
 
-object ConfirmCommand {
-    fun register(dispatcher: CommandDispatcher<ServerCommandSource>) {
-        Command.builder(dispatcher) {
-            command("gpss_confirm") {
-                requires { it.player.with<SignPlayerComponent>().confimCallback != null }
-                executes(::execute)
-            }
-        }
-    }
+interface SignData;
 
-    private fun execute(context: CommandContext<ServerCommandSource>): Int {
-        val p = context.source.player
-        val comp = p.with<SignPlayerComponent>()
-        comp.confimCallback?.invoke() ?: context.source.sendFeedback(LiteralText("No trades pending confirmation."), false)
-        comp.confimCallback = null
-        return 1
-    }
+data class SignAdminBuyData(
+    val targetStack: ItemStack,
+    val price: Double
+) : SignData
+
+data class SignAdminSellData(
+    val targetStack: ItemStack,
+    val price: Double
+) : SignData
+
+data class SignBuyData(
+    val linkedContainer: Lazy<ChestBlockEntity>,
+    val ownerUUID: UUID,
+    val targetStack: ItemStack,
+    val price: Double
+) : SignData
+
+data class SignSellData(
+    val linkedContainer: Lazy<ChestBlockEntity>,
+    val ownerUUID: UUID,
+    val targetStack: ItemStack,
+    val price: Double
+) : SignData
+
+class SignDataComponent<T : SignData> : Component<SignBlockEntity>() {
+    var data: T? = null
 }
