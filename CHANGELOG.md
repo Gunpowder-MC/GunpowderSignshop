@@ -1,3 +1,9 @@
+# Gunpowder Signshop 1.0.7
+
+- Added permissions for creating signs
+
+---
+
 # Gunpowder Signshop 1.0.6
 
 - Switch to components instead of maps

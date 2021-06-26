@@ -27,6 +27,7 @@ package io.github.gunpowder.signtypes
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.components.with
+import io.github.gunpowder.api.ext.getPermission
 import io.github.gunpowder.entities.ConfirmPopup
 import io.github.gunpowder.entities.SignAdminSellData
 import io.github.gunpowder.entities.SignDataComponent
@@ -47,7 +48,7 @@ object AdminSellSign {
         SignType.builder {
             name("gp:adminsell")
 
-            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.hasPermissionLevel(4) }
+            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.getPermission("signshop.adminsell", serverPlayerEntity.hasPermissionLevel(4)) }
 
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val comp = signBlockEntity.with<SignDataComponent<SignAdminSellData>>()

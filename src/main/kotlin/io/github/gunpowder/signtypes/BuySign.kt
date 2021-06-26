@@ -28,6 +28,7 @@ import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.components.with
+import io.github.gunpowder.api.ext.getPresentPermission
 import io.github.gunpowder.entities.ConfirmPopup
 import io.github.gunpowder.entities.SignBuyData
 import io.github.gunpowder.entities.SignDataComponent
@@ -41,8 +42,6 @@ import net.minecraft.nbt.NbtCompound
 import net.minecraft.text.LiteralText
 import net.minecraft.util.Formatting
 import net.minecraft.util.Identifier
-import net.minecraft.util.ItemScatterer
-import net.minecraft.util.collection.DefaultedList
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.registry.Registry
 import net.minecraft.util.registry.RegistryKey
@@ -55,6 +54,8 @@ object BuySign {
     fun build() {
         SignType.builder {
             name("gp:buy")
+
+            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.getPresentPermission("signshop.buy", false, serverPlayerEntity.hasPermissionLevel(0)) }
 
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val comp = signBlockEntity.with<SignDataComponent<SignBuyData>>()
