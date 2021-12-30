@@ -28,6 +28,7 @@ import io.github.gunpowder.api.GunpowderMod
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.components.with
+import io.github.gunpowder.api.ext.getPresentPermission
 import io.github.gunpowder.entities.ConfirmPopup
 import io.github.gunpowder.entities.SignDataComponent
 import io.github.gunpowder.entities.SignPlayerComponent
@@ -55,6 +56,8 @@ object SellSign {
     fun build() {
         SignType.builder {
             name("gp:sell")
+
+            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.getPresentPermission("signshop.sell", false, serverPlayerEntity.hasPermissionLevel(0)) }
 
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val comp = signBlockEntity.with<SignDataComponent<SignSellData>>()

@@ -27,6 +27,7 @@ package io.github.gunpowder.signtypes
 import io.github.gunpowder.api.builders.SignType
 import io.github.gunpowder.api.builders.Text
 import io.github.gunpowder.api.components.with
+import io.github.gunpowder.api.ext.getPermission
 import io.github.gunpowder.entities.ConfirmPopup
 import io.github.gunpowder.entities.SignAdminBuyData
 import io.github.gunpowder.entities.SignDataComponent
@@ -37,8 +38,6 @@ import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NbtCompound
 import net.minecraft.text.LiteralText
 import net.minecraft.util.Formatting
-import net.minecraft.util.ItemScatterer
-import net.minecraft.util.collection.DefaultedList
 
 object AdminBuySign {
     val handler by lazy {
@@ -49,7 +48,7 @@ object AdminBuySign {
         SignType.builder {
             name("gp:adminbuy")
 
-            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.hasPermissionLevel(4) }
+            requires { signBlockEntity, serverPlayerEntity -> serverPlayerEntity.getPermission("signshop.adminbuy", serverPlayerEntity.hasPermissionLevel(4)) }
 
             onClicked { signBlockEntity, serverPlayerEntity ->
                 val comp = signBlockEntity.with<SignDataComponent<SignAdminBuyData>>()
