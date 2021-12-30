@@ -1,36 +1,20 @@
-buildscript {
-    dependencies {
-        // Some bugs in Loom caused this; Hopefully this can be removed soon
-        constraints {
-            ["asm", "asm-util", "asm-tree", "asm-analysis"].forEach {
-                classpath("org.ow2.asm:$it") {
-                    version { require("9.0") }
-                    because("Fabric's TinyRemapper requires ASM 9")
-                }
-            }
-        }
-    }
-}
-
 // Plugins
 plugins {
-    id 'io.github.gunpowder' version '0.2.9'
+    id 'io.github.gunpowder' version '0.3.6'
 }
 
 dependencies {
-    // Needed here too
-    constraints {
-        ["asm", "asm-util", "asm-tree", "asm-analysis"].forEach {
-            implementation("org.ow2.asm:$it") {
-                version { require("9.0") }
-                because("Fabric's TinyRemapper requires ASM 9")
-            }
-        }
+    modImplementation("io.github.gunpowder:gunpowder-currency:1.0.8+gunpowder.1.1.1.1.mc.1.18.1") {
+        exclude group: "com.google.guava"
     }
 
-    modImplementation "io.github.gunpowder:gunpowder-currency:1.0.4+gunpowder.1.0.0.mc.1.17-rc2"
+    modRuntimeOnly("io.github.gunpowder:gunpowder-currency:1.0.8+gunpowder.1.1.1.1.mc.1.18.1") {
+        exclude group: "com.google.guava"
+        exclude group: "io.github.gunpowder", module: "gunpowder-api"
+        exclude group: "io.github.gunpowder", module: "gunpowder-base"
+    }
 }
 
-minecraft {
-    accessWidener 'src/main/resources/gunpowder_signshop.accesswidener'
+loom {
+    accessWidenerPath.set(file('src/main/resources/gunpowder_signshop.accesswidener'))
 }
